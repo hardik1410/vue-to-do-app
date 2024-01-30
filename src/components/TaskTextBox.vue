@@ -19,9 +19,19 @@
       @click="addTask()"
     />
 
-    <ul>
-      <li v-for="(t, index) in taskList" class="task-item" :key="index">
-        <p :class="{ strikethrough: t.checked }">{{ t.task }}</p>
+    <ul id="mylist">
+      <li
+        v-for="(t, index) in taskList"
+        draggable="true"
+        class="task-item"
+        @dragstart="dragStart"
+        @dragover="dragOver"
+        @drop="drop"
+        :key="index"
+      >
+        <p :class="{ strikethrough: t.checked }" class="task-text">
+          {{ t.task }}
+        </p>
         <div class="actions">
           <v-icon @click="checkTask(t)" color="blue" class="check-action"
             >mdi-checkbox-marked-circle-outline</v-icon
@@ -36,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 
 const taskList = ref([]);
 
@@ -62,6 +72,41 @@ const checkTask = (t) => {
 const removeTask = (task) => {
   taskList.value = taskList.value.filter((item) => item !== task);
   localStorage.setItem("taskList", JSON.stringify(taskList.value));
+};
+
+let draggedIndex = null;
+
+const dragStart = (e) => {
+  draggedIndex = [...e.target.parentNode.children].indexOf(e.target);
+};
+
+const dragOver = (e) => {
+  e.preventDefault();
+};
+
+const drop = (e) => {
+  const dropIndex = [...e.currentTarget.parentNode.children].indexOf(
+    e.currentTarget
+  );
+
+  const taskListCopy = [...taskList.value];
+  if (dropIndex !== draggedIndex) {
+    if (dropIndex < draggedIndex) {
+      taskList.value[dropIndex] = taskList.value[draggedIndex];
+
+      for (var i = dropIndex + 1; i <= draggedIndex; i++) {
+        taskList.value[i] = taskListCopy[i - 1];
+      }
+    } else {
+      taskList.value[dropIndex] = taskList.value[draggedIndex];
+
+      for (var i = dropIndex - 1; i >= draggedIndex; i--) {
+        taskList.value[i] = taskListCopy[i + 1];
+      }
+    }
+
+    localStorage.setItem("taskList", JSON.stringify(taskList.value));
+  }
 };
 </script>
 
@@ -112,12 +157,26 @@ ul > li {
   line-height: 40px;
   text-align: left;
   border-bottom: 1px solid $primary-600;
+  cursor: move;
+  transition: all 0.3s ease;
+}
+
+li:hover {
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
 }
 
 .task-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.task-text {
+  width: 100%;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .actions {
